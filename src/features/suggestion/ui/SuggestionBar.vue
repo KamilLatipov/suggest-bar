@@ -18,7 +18,7 @@ const getCompanies = debounce(async (query: string) => {
     suggestions.value = await getCompaniesRequest(query);
 
     if (suggestions.value.length === 0) {
-      errorMessage.value ='Не нашли совпадений';
+      errorMessage.value ='Нет совпадений';
     }
   } catch (e) {
     errorMessage.value = e.message;
