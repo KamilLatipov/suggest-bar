@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SearchBox from "./SearchBox.vue";
-import {ref, watch} from "vue";
+import {computed, ref, watch} from "vue";
 import SuggestionsBlock from "./SuggestionsBlock.vue";
 import {debounce} from "@/shared/helper.ts";
 import {getCompaniesRequest} from "@/features/suggestion/api/getCompanies.ts";
@@ -16,6 +16,10 @@ const getCompanies = debounce(async (query: string) => {
 
   try {
     suggestions.value = await getCompaniesRequest(query);
+
+    if (suggestions.value.length === 0) {
+      errorMessage.value ='Не нашли совпадений';
+    }
   } catch (e) {
     errorMessage.value = e.message;
     suggestions.value = [];
@@ -25,6 +29,33 @@ const getCompanies = debounce(async (query: string) => {
 
 })
 
+const isSearchBoxFocus = ref(false);
+
+const closeSuggestionsBlock = () => {
+  isSearchBoxFocus.value = false;
+}
+
+const onFocus = () => {
+  isSearchBoxFocus.value = true;
+  errorMessage.value = '';
+}
+
+const isSuggestionsBlockShown = computed(() => {
+  return isSearchBoxFocus.value && suggestions.value?.length;
+})
+
+const tags = ref<string[]>([]);
+
+const addTag = (alias: string) => {
+  value.value = '';
+  tags.value = [...tags.value, alias];
+}
+
+const closeTag = (alias: string) => {
+  const index = tags.value.indexOf(alias);
+  tags.value.splice(index, 1);
+}
+
 watch(value, (newQuery: string) => {
   if (newQuery.length >= 3) {
     getCompanies(newQuery);
@@ -33,22 +64,33 @@ watch(value, (newQuery: string) => {
   }
 
   errorMessage.value = '';
-
 })
 </script>
 
 <template>
   <div class="suggestion-bar">
-    <search-box v-model="value" :isLoading></search-box>
+    <search-box
+        v-model="value"
+        :isLoading
+        :tags
+        v-click-outside="closeSuggestionsBlock"
+        @focus="onFocus"
+        @closeTag="closeTag"
+    />
     <p v-if="errorMessage" class="suggestion-bar__error"> {{ errorMessage }}</p>
-    <suggestions-block v-if="suggestions?.length" class="suggestions-block" :suggestions></suggestions-block>
+    <suggestions-block
+        v-if="isSuggestionsBlockShown"
+        class="suggestions-block"
+        :suggestions
+        @choseSuggestion="addTag"
+    />
   </div>
 </template>
 
 <style scoped>
 .suggestion-bar {
   position: relative;
-  width: 400px;
+  width: 600px;
 
   .suggestions-block {
     position: absolute;
